@@ -66,14 +66,38 @@ export const PixiPreview: React.FC = () => {
                const texture = textures.get(clip.id);
                if (!texture) return null;
 
+               // Calculate Alpha for Transitions
+               let alpha = 1;
+               const transition = useProjectStore.getState().transitions.find(t => t.clipAId === clip.id || t.clipBId === clip.id);
+               
+               if (transition) {
+                  const clipA = clips.find(c => c.id === transition.clipAId);
+                  const clipB = clips.find(c => c.id === transition.clipBId);
+                  
+                  if (clipA && clipB) {
+                     const transStart = clipB.startTime;
+                     const transEnd = transStart + transition.duration;
+                     
+                     if (playhead >= transStart && playhead <= transEnd) {
+                        const progress = (playhead - transStart) / transition.duration;
+                        if (clip.id === transition.clipAId) {
+                           alpha = 1 - progress;
+                        } else {
+                           alpha = progress;
+                        }
+                     }
+                  }
+               }
+
                return (
                  <Sprite
                    key={clip.id}
                    texture={texture}
                    anchor={0.5}
+                   alpha={alpha}
                    x={1920 / 2}
                    y={1080 / 2}
-                   zIndex={index} // Higher index = top track
+                   zIndex={index}
                  />
                );
             })}
@@ -81,4 +105,5 @@ export const PixiPreview: React.FC = () => {
       </Stage>
     </div>
   );
+
 };

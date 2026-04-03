@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { PixiPreview } from './PixiPreview';
+import { TextOverlay } from './components/TextOverlay';
 
 export const PreviewPlayer: React.FC = () => {
   const { playhead, setPlayhead, isPlaying, setIsPlaying, duration } = usePlaybackStore();
@@ -65,9 +66,13 @@ export const PreviewPlayer: React.FC = () => {
         >
           {/* Main Video Engine (PixiJS Layer) */}
           <PixiPreview />
+          
+          {/* Text Overlay Engine (Konva Layer) */}
+          <TextOverlay />
 
           {/* Empty State Overlay */}
           {clips.length === 0 && (
+
             <div className="absolute inset-0 flex flex-col items-center justify-center text-textDim gap-4 animate-pulse pointer-events-none">
               <Monitor size={64} strokeWidth={1} />
               <p className="text-xs uppercase tracking-widest font-bold font-mono">No Media Selected</p>

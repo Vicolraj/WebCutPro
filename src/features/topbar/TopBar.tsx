@@ -12,12 +12,20 @@ import {
 } from 'lucide-react';
 
 
+import { ExportModal } from '../export/ExportModal';
+
 export const TopBar: React.FC = () => {
   const { projectName, setProjectName } = useProjectStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   return (
     <div className="h-12 bg-panel border-b border-border flex items-center justify-between px-4 z-50">
+      <ExportModal 
+        isOpen={isExportModalOpen} 
+        onClose={() => setIsExportModalOpen(false)} 
+      />
+      
       {/* Left: Logo & Project Name */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
@@ -81,7 +89,12 @@ export const TopBar: React.FC = () => {
           <span className="hidden sm:inline">Save</span>
         </Button>
 
-        <Button variant="accent" size="sm" className="gap-2 hover:scale-[1.02] active:scale-[0.98]">
+        <Button 
+          variant="accent" 
+          size="sm" 
+          className="gap-2 hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => setIsExportModalOpen(true)}
+        >
           <Download size={14} />
           <span className="font-semibold">Export</span>
         </Button>
@@ -95,3 +108,4 @@ export const TopBar: React.FC = () => {
     </div>
   );
 };
+

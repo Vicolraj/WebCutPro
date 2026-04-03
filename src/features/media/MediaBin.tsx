@@ -7,9 +7,11 @@ import {
   Film
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { useUIStore } from '../../core/store/useStore';
+import { useUIStore, useProjectStore, usePlaybackStore } from '../../core/store/useStore';
 import { type MediaAsset } from '../../libs/db';
 import { useMediaImport } from './hooks/useMediaImport';
+import type { TimelineTrack } from '../../core/store/useStore';
+
 
 
 export const MediaBin: React.FC = () => {
@@ -122,11 +124,46 @@ export const MediaBin: React.FC = () => {
         </>
       )}
 
-      {activeTab !== 'media' && (
+      {activeTab === 'text' && (
+         <div className="flex-1 p-3 flex flex-col gap-4">
+            <h3 className="text-[10px] uppercase font-bold tracking-widest text-accent">Titles & Text</h3>
+            <div className="grid grid-cols-2 gap-2">
+               <button 
+                  onClick={() => {
+                     const id = Math.random().toString(36).substring(2, 9);
+                     const track = useProjectStore.getState().tracks.find((t: TimelineTrack) => t.type === 'video');
+
+                     if (!track) return;
+
+                     useProjectStore.getState().addClip({
+                        id,
+                        trackId: track.id,
+                        mediaId: 'text-asset',
+                        name: 'New Title',
+                        startTime: usePlaybackStore.getState().playhead,
+                        duration: 5,
+                        sourceStart: 0,
+                        type: 'text',
+                        isSelected: true
+                     });
+                  }}
+                  className="flex flex-col items-center justify-center aspect-square bg-surface border border-border rounded-px8 hover:border-accent hover:bg-accent/5 transition-all group"
+               >
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                     <span className="text-accent font-black text-xl italic leading-none">T</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-tighter text-textDim group-hover:text-text">Add Title</span>
+               </button>
+            </div>
+         </div>
+      )}
+
+      {['effects', 'audio', 'stickers'].includes(activeTab) && (
          <div className="flex-1 flex flex-col items-center justify-center text-textDim gap-4 opacity-50">
             <p className="text-xs font-semibold uppercase tracking-widest">{activeTab} Coming Soon</p>
          </div>
       )}
+
     </div>
   );
 };
