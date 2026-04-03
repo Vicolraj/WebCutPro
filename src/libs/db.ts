@@ -14,11 +14,11 @@ export interface MediaAsset {
 export interface ProjectData {
   id: string;
   name: string;
-  version: number;
-  lastSaved: number;
   tracks: any[];
-  mediaIds: string[];
+  clips: any[];
+  lastSaved: number;
 }
+
 
 export class WebCutDB extends Dexie {
   assets!: Table<MediaAsset>;

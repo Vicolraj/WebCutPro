@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useUIStore, usePlaybackStore, useProjectStore } from '../../core/store/useStore';
 import { 
   Scissors, 
-  Trash2, 
   Plus, 
   Magnet, 
   ZoomIn, 
@@ -13,13 +12,20 @@ import {
 import { Button } from '../../components/ui/Button';
 
 const HEADER_WIDTH = 180;
-const TRACK_HEIGHT = 52;
+
+
+import { TrackHeader } from './components/TrackHeader';
+
+import { TimelineClip } from './components/TimelineClip';
 
 export const Timeline: React.FC = () => {
   const { zoom, setZoom } = useUIStore();
-  const { playhead, setPlayhead, duration, isPlaying } = usePlaybackStore();
+  const { playhead, setPlayhead, duration } = usePlaybackStore();
+  const { tracks, clips, addTrack, updateClip } = useProjectStore();
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [draggedClip, setDraggedClip] = useState<null | { id: string, startX: number, startTime: number }>(null);
 
   const timeToX = (t: number) => t * zoom;
   const xToTime = (x: number) => x / zoom;
@@ -37,20 +43,43 @@ export const Timeline: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isScrubbing) handleRulerInteraction(e as any);
+    const handleGlobalMove = (e: MouseEvent) => {
+      if (isScrubbing) {
+        handleRulerInteraction(e as any);
+      }
+      
+      if (draggedClip) {
+        const deltaX = (e.clientX - draggedClip.startX) / zoom;
+        updateClip(draggedClip.id, { startTime: Math.max(0, draggedClip.startTime + deltaX) });
+      }
     };
-    const handleMouseUp = () => setIsScrubbing(false);
 
-    if (isScrubbing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    const handleGlobalUp = () => {
+      setIsScrubbing(false);
+      setDraggedClip(null);
+    };
+
+    if (isScrubbing || draggedClip) {
+      document.addEventListener('mousemove', handleGlobalMove);
+      document.addEventListener('mouseup', handleGlobalUp);
     }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleGlobalMove);
+      document.removeEventListener('mouseup', handleGlobalUp);
     };
-  }, [isScrubbing]);
+  }, [isScrubbing, draggedClip, zoom, updateClip]);
+
+  const handleAddTrack = () => {
+    const id = `v${tracks.length + 1}`;
+    addTrack({
+      id,
+      type: 'video',
+      name: `Video ${tracks.filter(t => t.type === 'video').length + 1}`,
+      isMuted: false,
+      isLocked: false,
+      isSolo: false
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-panel relative overflow-hidden select-none">
@@ -65,18 +94,23 @@ export const Timeline: React.FC = () => {
              <Magnet size={14} className="text-accent" />
           </Button>
           <div className="h-4 w-px bg-border mx-1" />
-          <Button variant="ghost" size="sm" className="gap-2 text-[10px] uppercase font-bold text-textSec">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-2 text-[10px] uppercase font-bold text-textSec"
+            onClick={handleAddTrack}
+          >
              <Plus size={12} /> Add Track
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-surface border border-border rounded-px6 p-0.5">
-            <Button variant="ghost" size="icon" onClick={() => setZoom(zoom / 1.5)}>
+            <Button variant="ghost" size="icon" onClick={() => setZoom(Math.max(10, zoom / 1.2))}>
               <ZoomOut size={14} />
             </Button>
             <div className="w-px h-3 bg-border mx-1" />
-            <Button variant="ghost" size="icon" onClick={() => setZoom(zoom * 1.5)}>
+            <Button variant="ghost" size="icon" onClick={() => setZoom(Math.min(500, zoom * 1.2))}>
               <ZoomIn size={14} />
             </Button>
             <div className="w-px h-3 bg-border mx-1" />
@@ -106,17 +140,15 @@ export const Timeline: React.FC = () => {
             
             <div className="relative h-full" style={{ marginLeft: HEADER_WIDTH }}>
               {/* Ticks */}
-              {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
+              {Array.from({ length: Math.ceil(duration / 5) + 1 }).map((_, i) => (
                 <div 
                   key={i} 
                   className="absolute bottom-0 border-l border-border h-2"
-                  style={{ left: timeToX(i) }}
+                  style={{ left: timeToX(i * 5) }}
                 >
-                  {i % 5 === 0 && (
-                     <span className="absolute left-1 bottom-2 text-[9px] font-mono text-textDim italic">
-                        {Math.floor(i / 60)}:{String(i % 60).padStart(2, '0')}:00
-                     </span>
-                  )}
+                  <span className="absolute left-1 bottom-2 text-[9px] font-mono text-textDim italic whitespace-nowrap">
+                    {Math.floor((i * 5) / 60)}:{String((i * 5) % 60).padStart(2, '0')}:00
+                  </span>
                 </div>
               ))}
             </div>
@@ -132,17 +164,16 @@ export const Timeline: React.FC = () => {
               <div className="w-3 h-3 bg-accent rounded-full -ml-[5px] -mt-1 shadow-lg shadow-accent/50" />
             </div>
 
-            {/* Tracks (Stubs for Phase 1) */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex border-b border-border/10">
-                <div className="w-[180px] shrink-0 border-r border-border bg-panel h-[52px] flex items-center justify-between px-4 z-20">
-                   <div className="flex items-center gap-2">
-                      <div className={`w-1 h-6 rounded-full ${i % 2 === 0 ? 'bg-accent/40' : 'bg-purple/40'}`} />
-                      <span className="text-[11px] font-bold text-textSec uppercase">Track {i}</span>
-                   </div>
-                   <div className="h-6 w-px bg-border/40" />
+            {/* Real Tracks */}
+            {tracks.map((track) => (
+              <div key={track.id} className="flex border-b border-border/10 overflow-hidden">
+                <TrackHeader track={track} />
+                <div className="flex-1 timeline-track h-[52px] relative">
+                   {/* Clips for this track */}
+                   {clips.filter(c => c.trackId === track.id).map(clip => (
+                      <TimelineClip key={clip.id} clip={clip} />
+                   ))}
                 </div>
-                <div className="flex-1 timeline-track h-[52px]" />
               </div>
             ))}
           </div>
@@ -152,3 +183,4 @@ export const Timeline: React.FC = () => {
     </div>
   );
 };
+

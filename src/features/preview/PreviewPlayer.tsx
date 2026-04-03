@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { usePlaybackStore, useUIStore } from '../../core/store/useStore';
+import React, { useState } from 'react';
+import { usePlaybackStore, useProjectStore } from '../../core/store/useStore';
 import { 
   Play, 
   Pause, 
@@ -13,13 +13,14 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { PixiPreview } from './PixiPreview';
 
 export const PreviewPlayer: React.FC = () => {
   const { playhead, setPlayhead, isPlaying, setIsPlaying, duration } = usePlaybackStore();
-  const [aspectRatio, setAspectRatio] = useState('16:9');
+  const { clips } = useProjectStore();
+  const [aspectRatio] = useState('16:9');
   const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted] = useState(false);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
 
@@ -31,12 +32,12 @@ export const PreviewPlayer: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050508] relative overflow-hidden group">
+    <div className="flex flex-col h-full bg-[#050508] relative overflow-hidden group font-sans">
       {/* Top Controls */}
       <div className="flex items-center justify-between p-2 absolute top-0 left-0 right-0 z-20 transition-all">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="gap-1.5 text-[10px] uppercase font-bold text-textSec bg-panel/50 backdrop-blur-md">
-            16:9 
+            {aspectRatio} 
             <ChevronDown size={12} />
           </Button>
           <div className="h-4 w-px bg-white/10" />
@@ -62,14 +63,19 @@ export const PreviewPlayer: React.FC = () => {
             maxWidth: '100%'
           }}
         >
-          {/* Main Video Element (Stub for Phase 1) */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-textDim gap-4 animate-pulse">
-            <Monitor size={64} strokeWidth={1} />
-            <p className="text-xs uppercase tracking-widest font-bold font-mono">No Media Selected</p>
-          </div>
+          {/* Main Video Engine (PixiJS Layer) */}
+          <PixiPreview />
+
+          {/* Empty State Overlay */}
+          {clips.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-textDim gap-4 animate-pulse pointer-events-none">
+              <Monitor size={64} strokeWidth={1} />
+              <p className="text-xs uppercase tracking-widest font-bold font-mono">No Media Selected</p>
+            </div>
+          )}
 
           {/* Timecode Overlay */}
-          <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-lg border border-white/10 px-3 py-1 rounded-px6">
+          <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-lg border border-white/10 px-3 py-1 rounded-px6 z-50">
             <span className="text-sm font-mono text-white font-bold tabular-nums">
                {formatTime(playhead)}
             </span>

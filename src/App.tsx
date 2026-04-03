@@ -4,10 +4,43 @@ import { TopBar } from './features/topbar/TopBar';
 import { MediaBin } from './features/media/MediaBin';
 import { Timeline } from './features/timeline/Timeline';
 import { PreviewPlayer } from './features/preview/PreviewPlayer';
-import { usePlaybackStore } from './core/store/useStore';
+import { usePlaybackStore, useProjectStore } from './core/store/useStore';
+import { audioEngine } from './features/audio/AudioEngine';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useProjectPersistence } from './hooks/useProjectPersistence';
 
 export const App: React.FC = () => {
   const { isPlaying, playhead, setPlayhead, duration, setIsPlaying } = usePlaybackStore();
+  const { clips } = useProjectStore();
+
+  // Register global hooks
+  useKeyboardShortcuts();
+  useProjectPersistence();
+
+
+
+  // Initialize and Sync Audio Engine
+  useEffect(() => {
+    audioEngine.init().then(() => {
+       audioEngine.syncClips(clips);
+    });
+  }, [clips]);
+
+  // Sync isPlaying state
+  useEffect(() => {
+    if (isPlaying) {
+       audioEngine.play();
+    } else {
+       audioEngine.pause();
+    }
+  }, [isPlaying]);
+
+  // Sync playhead (seeking)
+  useEffect(() => {
+    if (!isPlaying) {
+      audioEngine.seek(playhead);
+    }
+  }, [playhead, isPlaying]);
 
   // Playback Loop
   useEffect(() => {
@@ -22,6 +55,7 @@ export const App: React.FC = () => {
         if (newPlayhead >= duration) {
            setPlayhead(duration);
            setIsPlaying(false);
+           audioEngine.stop();
         } else {
            setPlayhead(newPlayhead);
         }
@@ -33,6 +67,7 @@ export const App: React.FC = () => {
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, playhead, duration, setPlayhead, setIsPlaying]);
+
 
   return (
     <EditorLayout
