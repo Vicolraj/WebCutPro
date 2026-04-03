@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
-import { TimelineClip } from '../../core/store/useStore';
+import type { TimelineClip } from '../../core/store/useStore';
 import { db } from '../../libs/db';
+
 
 class AudioEngine {
   private players: Map<string, Tone.Player> = new Map();

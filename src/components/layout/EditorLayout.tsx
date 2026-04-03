@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useUIStore } from '../../core/store/useStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -34,12 +34,13 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
 
   const isResizingRef = useRef<string | null>(null);
 
-  const handleMouseDown = (type: string) => (e: React.MouseEvent) => {
+  const handleMouseDown = (type: string) => (_e: React.MouseEvent) => {
     isResizingRef.current = type;
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.body.style.cursor = type.includes('Width') ? 'col-resize' : 'row-resize';
   };
+
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizingRef.current) return;

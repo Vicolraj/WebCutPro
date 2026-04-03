@@ -35,8 +35,27 @@ export const icons = {
 };
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
-export const Icon: SVGAElement = ({ d, size = 16, color = C.textSec, fill = "none", ...rest } : {}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} {...rest}>
+interface IconProps extends Omit<React.SVGProps<SVGSVGElement>, 'd'> {
+  d: string | string[];
+  size?: number;
+  color?: string;
+}
+
+
+export const Icon: React.FC<IconProps> = ({ d, size = 16, color = "currentColor", fill = "none", ...rest }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill={fill} 
+    stroke={color} 
+    strokeWidth={1.8} 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    style={{ flexShrink: 0 }} 
+    {...rest}
+  >
     {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
   </svg>
 );
+

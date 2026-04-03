@@ -5,13 +5,12 @@ import {
   Undo2, 
   Redo2, 
   Download, 
-  Play, 
   Save, 
-  Settings, 
   User, 
   ChevronDown,
   Monitor
 } from 'lucide-react';
+
 
 export const TopBar: React.FC = () => {
   const { projectName, setProjectName } = useProjectStore();
