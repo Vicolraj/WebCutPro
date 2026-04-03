@@ -164,12 +164,6 @@ export const useProjectStore = create<ProjectStore>()(
   )
 );
 
-
-
-
-
-
-
 export interface UIStore {
   leftPanelWidth: number;
   rightPanelWidth: number;
