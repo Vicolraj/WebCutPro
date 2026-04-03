@@ -1,6 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #4F8EF7;
+  --color-bg: #0F0F16;
+  --color-panel: #111118;
+  --color-surface: #1A1A24;
+  --color-border: #2A2A3A;
+  --color-borderHover: #3a3a4a;
+  --color-text: #FFFFFF;
+  --color-textSec: #A0A0B0;
+  --color-textDim: #606070;
+  --color-purple: #9b59b6;
+  
+  --radius-px2: 2px;
+  --radius-px4: 4px;
+  --radius-px6: 6px;
+  --radius-px8: 8px;
+}
 
 @layer base {
   body {
@@ -21,13 +37,6 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full hover:bg-borderHover transition-colors;
   }
-}
-
-:root {
-  --accent: #4F8EF7;
-  --panel-bg: #111118;
-  --surface: #1A1A24;
-  --border: #2A2A3A;
 }
 
 /* Glassmorphism utility */
