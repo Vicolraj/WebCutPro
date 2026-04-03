@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg text-text antialiased selection:bg-accent/30;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-borderHover transition-colors;
+  }
+}
+
+:root {
+  --accent: #4F8EF7;
+  --panel-bg: #111118;
+  --surface: #1A1A24;
+  --border: #2A2A3A;
+}
+
+/* Glassmorphism utility */
+.glass {
+  @apply bg-white/5 backdrop-blur-md border border-white/10;
+}
+
+/* Timeline specific styles */
+.timeline-track {
+  height: 52px;
+  @apply border-b border-border/50 relative;
+}
+
+.clip-video {
+  @apply bg-blue-600/30 border-blue-500/50 text-blue-200;
+}
+
+.clip-audio {
+  @apply bg-emerald-600/30 border-emerald-500/50 text-emerald-200;
+}
+
+.clip-text {
+  @apply bg-purple-600/30 border-purple-500/50 text-purple-200;
+}
