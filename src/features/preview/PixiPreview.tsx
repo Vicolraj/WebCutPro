@@ -3,8 +3,8 @@ import * as PIXI from 'pixi.js';
 // @ts-ignore - Some versions of @pixi/react v8 have incomplete type declarations
 import { Stage, Sprite, Container } from '@pixi/react';
 import { usePlaybackStore, useProjectStore } from '../../core/store/useStore';
-import type { TimelineClip } from '../../core/store/useStore';
 import { db } from '../../libs/db';
+
 
 
 export const PixiPreview: React.FC = () => {

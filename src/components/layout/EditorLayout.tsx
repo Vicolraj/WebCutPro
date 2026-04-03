@@ -1,14 +1,9 @@
 import React, { useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { useUIStore } from '../../core/store/useStore';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface EditorLayoutProps {
+
   topbar: React.ReactNode;
   leftPanel: React.ReactNode;
   preview: React.ReactNode;
