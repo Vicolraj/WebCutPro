@@ -4,7 +4,8 @@ import { useProjectStore } from '../../../core/store/useStore';
 import { usePlaybackStore } from '../../../core/store/useStore';
 
 export const TextOverlay: React.FC = () => {
-  const { clips, updateClip, selectClip } = useProjectStore();
+  const { clips, selectClip } = useProjectStore();
+
   const { playhead } = usePlaybackStore();
 
   const activeTextClips = clips.filter(c => 
