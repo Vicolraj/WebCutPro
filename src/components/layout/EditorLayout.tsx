@@ -1,7 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { useUIStore, useProjectStore, usePlaybackStore } from '../../core/store/useStore';
-import { DndContext, type DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, type DragEndEvent, type DragStartEvent, useSensor, useSensors, PointerSensor, DragOverlay } from '@dnd-kit/core';
 import { db } from '../../libs/db';
+import { Upload } from 'lucide-react';
 
 
 interface EditorLayoutProps {
@@ -29,6 +30,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
   } = useUIStore();
 
   const isResizingRef = useRef<string | null>(null);
+  const [activeAsset, setActiveAsset] = React.useState<any>(null);
 
   const handleMouseDown = (type: string) => (_e: React.MouseEvent) => {
     isResizingRef.current = type;
@@ -61,9 +63,14 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
   }, [handleMouseMove]);
 
   const { addClip } = useProjectStore();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveAsset(event.active.data.current);
+  };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveAsset(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -97,7 +104,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-text overflow-hidden font-sans">
         {/* Topbar */}
         <header className="flex-shrink-0 z-50">
@@ -151,6 +158,24 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
             </section>
           </div>
         </main>
+        
+        <DragOverlay dropAnimation={null}>
+          {activeAsset ? (
+            <div className="bg-accent/20 border-2 border-accent rounded-lg p-3 shadow-2xl backdrop-blur-md flex items-center gap-3 min-w-[160px] pointer-events-none rotate-3 scale-110 transition-transform">
+               {activeAsset.thumbnail ? (
+                 <img src={activeAsset.thumbnail} className="w-10 h-10 rounded object-cover border border-white/20" />
+               ) : (
+                 <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center text-accent">
+                   <Upload size={20} />
+                 </div>
+               )}
+               <div className="flex flex-col">
+                 <span className="text-[11px] font-bold text-white truncate max-w-[100px]">{activeAsset.name}</span>
+                 <span className="text-[9px] text-accent/70 uppercase font-mono tracking-tighter">{activeAsset.type.split('/')[1]}</span>
+               </div>
+            </div>
+          ) : null}
+        </DragOverlay>
       </div>
     </DndContext>
   );

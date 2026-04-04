@@ -52,6 +52,7 @@ export interface ProjectStore {
   tracks: TimelineTrack[];
   clips: TimelineClip[];
   transitions: Transition[];
+  aspectRatio: '16:9' | '9:16' | '1:1';
   
   // Actions
   setProjectId: (id: string) => void;
@@ -68,6 +69,7 @@ export interface ProjectStore {
   splitClip: (clipId: string, time: number) => void;
   rippleRemoveClip: (clipId: string) => void;
   addTransition: (trans: Omit<Transition, 'id'>) => void;
+  setAspectRatio: (ratio: '16:9' | '9:16' | '1:1') => void;
   resetProject: () => void;
 }
 
@@ -86,6 +88,7 @@ export const useProjectStore = create<ProjectStore>()(
       ],
       clips: [],
       transitions: [],
+      aspectRatio: '16:9',
       
       setProjectId: (id: string) =>
         set((state: ProjectStore) => {
@@ -194,6 +197,11 @@ export const useProjectStore = create<ProjectStore>()(
           state.transitions.push({ ...trans, id: Math.random().toString(36).slice(2, 9) });
         }),
 
+      setAspectRatio: (ratio) =>
+        set((state: ProjectStore) => {
+          state.aspectRatio = ratio;
+        }),
+
       resetProject: () =>
         set((state: ProjectStore) => {
           state.projectId = 'default-project';
@@ -205,6 +213,7 @@ export const useProjectStore = create<ProjectStore>()(
           ];
           state.clips = [];
           state.transitions = [];
+          state.aspectRatio = '16:9';
         }),
     }))
   )

@@ -9,7 +9,7 @@ extend({ Container, Sprite });
 
 export const PixiPreview: React.FC = () => {
   const { playhead } = usePlaybackStore();
-  const { clips, transitions } = useProjectStore();
+  const { clips, transitions, aspectRatio } = useProjectStore();
 
   const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
@@ -47,11 +47,21 @@ export const PixiPreview: React.FC = () => {
     // Cleanup old textures if needed (simplified for now)
   }, [playhead, clips, textures]);
 
+  const getDimensions = () => {
+    switch (aspectRatio) {
+      case '9:16': return { width: 1080, height: 1920 };
+      case '1:1': return { width: 1080, height: 1080 };
+      default: return { width: 1920, height: 1080 };
+    }
+  };
+
+  const { width, height } = getDimensions();
+
   return (
     <div className="w-full h-full flex items-center justify-center bg-black overflow-hidden relative">
       <Application 
-        width={1920} 
-        height={1080} 
+        width={width} 
+        height={height} 
         background="#000000"
         antialias={true}
         resolution={window.devicePixelRatio || 1}
@@ -102,8 +112,8 @@ export const PixiPreview: React.FC = () => {
                    texture={texture}
                    anchor={0.5}
                    alpha={alpha}
-                   x={1920 / 2}
-                   y={1080 / 2}
+                   x={width / 2}
+                   y={height / 2}
                    zIndex={index}
                  />
                );

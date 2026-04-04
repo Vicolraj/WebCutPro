@@ -16,13 +16,14 @@ import { Button } from '../../components/ui/Button';
 import { PixiPreview } from './PixiPreview';
 import { TextOverlay } from './components/TextOverlay';
 import { audioEngine } from '../audio/AudioEngine';
+import { cn } from '../../utils/utils';
 
 export const PreviewPlayer: React.FC = () => {
   const { playhead, setPlayhead, isPlaying, setIsPlaying, duration } = usePlaybackStore();
-  const { clips } = useProjectStore();
-  const [aspectRatio] = useState('16:9');
+  const { clips, aspectRatio, setAspectRatio } = useProjectStore();
   const [volume, setVolume] = useState(1);
   const [isMuted] = useState(false);
+  const [isResMenuOpen, setIsResMenuOpen] = useState(false);
 
   const togglePlay = () => {
     if (!isPlaying) {
@@ -42,13 +43,39 @@ export const PreviewPlayer: React.FC = () => {
     <div className="flex flex-col h-full bg-[#050508] relative overflow-hidden group font-sans">
       {/* Top Controls */}
       <div className="flex items-center justify-between p-2 absolute top-0 left-0 right-0 z-20 transition-all">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-[10px] uppercase font-bold text-textSec bg-panel/50 backdrop-blur-md">
+        <div className="flex items-center gap-2 relative">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-1.5 text-[10px] uppercase font-bold text-textSec bg-panel/50 backdrop-blur-md border border-white/5"
+            onClick={() => setIsResMenuOpen(!isResMenuOpen)}
+          >
             {aspectRatio} 
-            <ChevronDown size={12} />
+            <ChevronDown size={12} className={cn("transition-transform", isResMenuOpen && "rotate-180")} />
           </Button>
+
+          {isResMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 w-32 bg-[#1A1A24] border border-white/10 rounded-lg shadow-2xl overflow-hidden z-50 backdrop-blur-xl">
+              {(['16:9', '9:16', '1:1'] as const).map((ratio) => (
+                <button
+                  key={ratio}
+                  className={cn(
+                    "w-full px-3 py-2 text-[10px] font-bold text-left hover:bg-accent/10 transition-colors uppercase tracking-wider",
+                    aspectRatio === ratio ? "text-accent bg-accent/5" : "text-textSec"
+                  )}
+                  onClick={() => {
+                    setAspectRatio(ratio);
+                    setIsResMenuOpen(false);
+                  }}
+                >
+                  {ratio} {ratio === '16:9' ? '(Landscape)' : ratio === '9:16' ? '(Portrait)' : '(Square)'}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="h-4 w-px bg-white/10" />
-           <span className="text-[10px] font-mono text-textSec uppercase tracking-widest bg-panel/50 px-2 py-0.5 rounded-full backdrop-blur-md">
+           <span className="text-[10px] font-mono text-textSec uppercase tracking-widest bg-panel/50 px-2 py-0.5 rounded-full backdrop-blur-md border border-white/5">
              Full HD
            </span>
         </div>
