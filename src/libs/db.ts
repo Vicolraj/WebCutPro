@@ -16,6 +16,7 @@ export interface ProjectData {
   name: string;
   tracks: any[];
   clips: any[];
+  transitions?: any[];
   lastSaved: number;
 }
 

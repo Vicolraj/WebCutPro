@@ -8,16 +8,28 @@ import { usePlaybackStore, useProjectStore } from './core/store/useStore';
 import { audioEngine } from './features/audio/AudioEngine';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useProjectPersistence } from './hooks/useProjectPersistence';
+import { ProjectDashboard } from './features/dashboard/ProjectDashboard';
 
 export const App: React.FC = () => {
   const { isPlaying, playhead, setPlayhead, duration, setIsPlaying } = usePlaybackStore();
-  const { clips } = useProjectStore();
+  const { clips, projectId, resetProject } = useProjectStore();
+  
+  // Track if we are in the editor or dashboard
+  const [inEditor, setInEditor] = React.useState(false);
+
+  const handleBack = () => {
+    resetProject();
+    setInEditor(false);
+  };
 
   // Register global hooks
   useKeyboardShortcuts();
-  useProjectPersistence();
-
-
+  useProjectPersistence();  // Sync inEditor state with projectId
+  useEffect(() => {
+    if (projectId && projectId !== 'default-project') {
+      setInEditor(true);
+    }
+  }, [projectId]);
 
   // Initialize and Sync Audio Engine
   useEffect(() => {
@@ -69,9 +81,13 @@ export const App: React.FC = () => {
   }, [isPlaying, playhead, duration, setPlayhead, setIsPlaying]);
 
 
+  if (!inEditor) {
+    return <ProjectDashboard />;
+  }
+
   return (
     <EditorLayout
-      topbar={<TopBar />}
+      topbar={<TopBar onBack={handleBack} />}
       leftPanel={<MediaBin />}
       preview={<PreviewPlayer />}
       rightPanel={
@@ -97,5 +113,6 @@ export const App: React.FC = () => {
     />
   );
 };
+
 
 export default App;

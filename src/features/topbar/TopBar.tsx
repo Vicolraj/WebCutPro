@@ -13,11 +13,17 @@ import {
 
 
 import { ExportModal } from '../export/ExportModal';
+import { ChevronLeft } from 'lucide-react';
 
-export const TopBar: React.FC = () => {
+interface TopBarProps {
+  onBack?: () => void;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ onBack }) => {
   const { projectName, setProjectName } = useProjectStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
 
   return (
     <div className="h-12 bg-panel border-b border-border flex items-center justify-between px-4 z-50">
@@ -27,7 +33,18 @@ export const TopBar: React.FC = () => {
       />
       
       {/* Left: Logo & Project Name */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
+        {onBack && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onBack}
+            className="hover:bg-accent/10 hover:text-accent transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </Button>
+        )}
+        
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-px8 bg-gradient-to-br from-accent to-purple flex items-center justify-center shadow-lg shadow-accent/20">
             <span className="text-white font-black text-sm italic">WC</span>

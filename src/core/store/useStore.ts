@@ -3,21 +3,30 @@ import { immer } from 'zustand/middleware/immer';
 import { temporal } from 'zundo';
 
 export interface TimelineClip {
-// ... existing ...
-
   id: string;
   trackId: string;
-  mediaId: string;
-  name: string;
   startTime: number;
   duration: number;
   sourceStart: number;
-  type: 'video' | 'audio' | 'image' | 'text';
-  thumbnail?: string;
+  name: string;
+  type: 'video' | 'audio' | 'text';
+  mediaId?: string;  // Link to IndexedDB MediaAsset
+  blob: string;     // Active session Blob URL
   isSelected?: boolean;
+  content?: string;  // For text clips
+  thumbnail?: string; // Optional thumbnail URL
+  style?: {
+    fontSize: number;
+    fontFamily: string;
+    color: string;
+    x: number;
+    y: number;
+  };
 }
 
-export type TransitionType = 'crossfade' | 'wipe-left' | 'wipe-right' | 'fade-to-black';
+export type TrackType = 'video' | 'audio';
+
+export type TransitionType = 'crossfade' | 'wipe' | 'slide' | 'dissolve';
 
 export interface Transition {
   id: string;
@@ -28,35 +37,37 @@ export interface Transition {
 }
 
 export interface TimelineTrack {
-
   id: string;
-  type: 'video' | 'audio';
+  type: TrackType;
   name: string;
   isMuted: boolean;
   isLocked: boolean;
   isSolo: boolean;
 }
 
+
 export interface ProjectStore {
+  projectId: string;
   projectName: string;
   tracks: TimelineTrack[];
   clips: TimelineClip[];
   transitions: Transition[];
+  
+  // Actions
+  setProjectId: (id: string) => void;
   setProjectName: (name: string) => void;
-
-  // Track Actions
+  loadProjectData: (data: Partial<ProjectStore>) => void;
   addTrack: (track: TimelineTrack) => void;
   toggleMute: (trackId: string) => void;
   toggleLock: (trackId: string) => void;
-  
-  // Clip Actions
   addClip: (clip: TimelineClip) => void;
   updateClip: (clipId: string, changes: Partial<TimelineClip>) => void;
   removeClip: (clipId: string) => void;
   selectClip: (clipId: string | null) => void;
   splitClip: (clipId: string, time: number) => void;
   rippleRemoveClip: (clipId: string) => void;
-  addTransition: (transition: Omit<Transition, 'id'>) => void;
+  addTransition: (trans: Omit<Transition, 'id'>) => void;
+  resetProject: () => void;
 }
 
 
@@ -65,6 +76,7 @@ export interface ProjectStore {
 export const useProjectStore = create<ProjectStore>()(
   temporal(
     immer((set) => ({
+      projectId: 'default-project',
       projectName: 'Untitled Project',
       tracks: [
         { id: 'v1', type: 'video', name: 'Video 1', isMuted: false, isLocked: false, isSolo: false },
@@ -74,9 +86,23 @@ export const useProjectStore = create<ProjectStore>()(
       clips: [],
       transitions: [],
       
+      setProjectId: (id: string) =>
+        set((state: ProjectStore) => {
+          state.projectId = id;
+        }),
+
       setProjectName: (name: string) =>
         set((state: ProjectStore) => {
           state.projectName = name;
+        }),
+
+      loadProjectData: (data: Partial<ProjectStore>) =>
+        set((state: ProjectStore) => {
+          if (data.projectId) state.projectId = data.projectId;
+          if (data.projectName) state.projectName = data.projectName;
+          if (data.tracks) state.tracks = data.tracks;
+          if (data.clips) state.clips = data.clips;
+          if (data.transitions) state.transitions = data.transitions;
         }),
 
       addTrack: (track: TimelineTrack) => 
@@ -159,6 +185,19 @@ export const useProjectStore = create<ProjectStore>()(
       addTransition: (trans) => 
         set((state: ProjectStore) => {
           state.transitions.push({ ...trans, id: Math.random().toString(36).slice(2, 9) });
+        }),
+
+      resetProject: () =>
+        set((state: ProjectStore) => {
+          state.projectId = 'default-project';
+          state.projectName = 'Untitled Project';
+          state.tracks = [
+            { id: 'v1', type: 'video', name: 'Video 1', isMuted: false, isLocked: false, isSolo: false },
+            { id: 'v2', type: 'video', name: 'Video 2', isMuted: false, isLocked: false, isSolo: false },
+            { id: 'a1', type: 'audio', name: 'Audio 1', isMuted: false, isLocked: false, isSolo: false },
+          ];
+          state.clips = [];
+          state.transitions = [];
         }),
     }))
   )

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Upload, 
   Search, 
@@ -8,11 +8,9 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUIStore, useProjectStore, usePlaybackStore } from '../../core/store/useStore';
-import { type MediaAsset } from '../../libs/db';
+import { db, type MediaAsset } from '../../libs/db';
 import { useMediaImport } from './hooks/useMediaImport';
-import type { TimelineTrack } from '../../core/store/useStore';
-
-
+import { cn } from '../../utils/utils';
 
 export const MediaBin: React.FC = () => {
   const { activeTab, setActiveTab } = useUIStore();
@@ -21,12 +19,27 @@ export const MediaBin: React.FC = () => {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { importFiles, isImporting, progress } = useMediaImport();
-  const [assets] = useState<MediaAsset[]>([]); // Will be connected to DB in Phase 2
+  const [assets, setAssets] = useState<MediaAsset[]>([]);
+  const { addClip } = useProjectStore();
+
+  useEffect(() => {
+    const loadAssets = async () => {
+      const allAssets = await db.assets.toArray();
+      setAssets(allAssets);
+    };
+    loadAssets();
+    
+    // Refresh when importing finishes
+    if (!isImporting) loadAssets();
+  }, [isImporting]);
 
   const handleFileUpload = (files: FileList | null) => {
     importFiles(files);
   };
 
+  const filteredAssets = assets.filter(a => 
+    a.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col h-full bg-panel">
@@ -115,12 +128,63 @@ export const MediaBin: React.FC = () => {
                   <p className="text-xs font-medium">Empty Media Bin</p>
                </div>
             ) : (
-               <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3" : "flex flex-col gap-2"}>
-                  {/* Assets will be rendered here */}
-               </div>
+                <div 
+                  className={cn(
+                    "grid gap-3",
+                    viewMode === 'grid' ? "grid-cols-2" : "flex flex-col"
+                  )}
+                >
+                   {filteredAssets.map(asset => (
+                     <div
+                        key={asset.id}
+                        onClick={() => {
+                          const blobUrl = URL.createObjectURL(asset.blob);
+                          const clipType = asset.type.includes('video') ? 'video' : 'audio';
+                          
+                          addClip({
+                            id: Math.random().toString(36).substring(2, 9),
+                            trackId: clipType === 'video' ? 'v1' : 'a1',
+                            startTime: usePlaybackStore.getState().playhead,
+                            duration: asset.duration || 5,
+                            sourceStart: 0,
+                            name: asset.name,
+                            type: clipType,
+                            mediaId: asset.id,
+                            blob: blobUrl,
+                          });
+                        }}
+                        className={cn(
+                          "group relative bg-surface border border-border rounded-xl overflow-hidden cursor-pointer hover:border-accent transition-all hover:scale-[1.02] active:scale-98 shadow-sm",
+                          viewMode === 'list' && "flex items-center p-2"
+                        )}
+                      >
+                        <div className={cn(
+                          "aspect-video bg-black flex items-center justify-center text-accent/30 overflow-hidden",
+                          viewMode === 'list' && "w-12 h-12 aspect-square rounded-lg flex-shrink-0"
+                        )}>
+                          {asset.thumbnail ? (
+                            <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            asset.type.includes('video') ? <Film size={24} /> : <div className="text-xl font-bold italic">A</div>
+                          )}
+                        </div>
+                        <div className="p-2 min-w-0">
+                          <p className="text-[11px] font-bold truncate mb-1 text-text">{asset.name}</p>
+                          <div className="flex items-center gap-2 text-[9px] text-textDim uppercase font-bold tracking-tighter">
+                            <span>{(asset.size / (1024 * 1024)).toFixed(1)} MB</span>
+                            {asset.duration && (
+                              <>
+                                <span>•</span>
+                                <span>{Math.floor(asset.duration)}s</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                   ))}
+                </div>
             )}
           </div>
-
         </>
       )}
 
@@ -131,20 +195,29 @@ export const MediaBin: React.FC = () => {
                <button 
                   onClick={() => {
                      const id = Math.random().toString(36).substring(2, 9);
-                     const track = useProjectStore.getState().tracks.find((t: TimelineTrack) => t.type === 'video');
+                     const state = useProjectStore.getState();
+                     const track = state.tracks.find(t => t.type === 'video');
 
                      if (!track) return;
 
-                     useProjectStore.getState().addClip({
+                     addClip({
                         id,
                         trackId: track.id,
-                        mediaId: 'text-asset',
                         name: 'New Title',
                         startTime: usePlaybackStore.getState().playhead,
                         duration: 5,
                         sourceStart: 0,
                         type: 'text',
-                        isSelected: true
+                        blob: '', // Text clips don't need a blob
+                        isSelected: true,
+                        content: 'Enter Text',
+                        style: {
+                          fontSize: 48,
+                          fontFamily: 'Inter',
+                          color: '#ffffff',
+                          x: 960,
+                          y: 540
+                        }
                      });
                   }}
                   className="flex flex-col items-center justify-center aspect-square bg-surface border border-border rounded-px8 hover:border-accent hover:bg-accent/5 transition-all group"
@@ -163,7 +236,6 @@ export const MediaBin: React.FC = () => {
             <p className="text-xs font-semibold uppercase tracking-widest">{activeTab} Coming Soon</p>
          </div>
       )}
-
     </div>
   );
 };

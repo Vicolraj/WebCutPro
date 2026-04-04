@@ -1,37 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import * as PIXI from 'pixi.js';
-// @ts-ignore - Some versions of @pixi/react v8 have incomplete type declarations
-import { Stage, Sprite, Container } from '@pixi/react';
+import { Container, Sprite, Texture, Assets } from 'pixi.js';
+import { Application, extend } from '@pixi/react';
 import { usePlaybackStore, useProjectStore } from '../../core/store/useStore';
 import { db } from '../../libs/db';
 
-
+// Register PixiJS components to be used as JSX elements
+extend({ Container, Sprite });
 
 export const PixiPreview: React.FC = () => {
   const { playhead } = usePlaybackStore();
-  const { clips } = useProjectStore();
+  const { clips, transitions } = useProjectStore();
 
-  const [textures, setTextures] = useState<Map<string, PIXI.Texture>>(new Map());
+  const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
-  // Force Pixi to re-render when playhead changes
+  // Handle texture loading for current clips
   useEffect(() => {
-    // 1. Logic to update textures based on playhead
     const currentClips = clips.filter(c => 
        playhead >= c.startTime && playhead <= c.startTime + c.duration
     );
 
-    // 2. Load textures for current clips if not already loaded
     const loadTextures = async () => {
        const nextTextures = new Map(textures);
        let updated = false;
 
        for (const clip of currentClips) {
-          if (!nextTextures.has(clip.id)) {
+          if (!nextTextures.has(clip.id) && clip.mediaId) {
              try {
                 const asset = await db.assets.get(clip.mediaId);
                 if (asset) {
                    const url = URL.createObjectURL(asset.blob);
-                   const texture = PIXI.Texture.from(url);
+                   const texture = await Assets.load(url);
                    nextTextures.set(clip.id, texture);
                    updated = true;
                 }
@@ -45,21 +43,20 @@ export const PixiPreview: React.FC = () => {
     };
 
     loadTextures();
+    
+    // Cleanup old textures if needed (simplified for now)
   }, [playhead, clips, textures]);
 
   return (
     <div className="w-full h-full flex items-center justify-center bg-black overflow-hidden relative">
-      <Stage 
+      <Application 
         width={1920} 
         height={1080} 
-        options={{ 
-          backgroundColor: 0x000000, 
-          antialias: true,
-          resolution: window.devicePixelRatio || 1
-        }}
-        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+        background="#000000"
+        antialias={true}
+        resolution={window.devicePixelRatio || 1}
       >
-        <Container>
+        <pixiContainer>
           {clips
             .filter(c => playhead >= c.startTime && playhead <= c.startTime + c.duration)
             .map((clip, index) => {
@@ -68,7 +65,7 @@ export const PixiPreview: React.FC = () => {
 
                // Calculate Alpha for Transitions
                let alpha = 1;
-               const transition = useProjectStore.getState().transitions.find(t => t.clipAId === clip.id || t.clipBId === clip.id);
+               const transition = transitions.find(t => t.clipAId === clip.id || t.clipBId === clip.id);
                
                if (transition) {
                   const clipA = clips.find(c => c.id === transition.clipAId);
@@ -90,7 +87,7 @@ export const PixiPreview: React.FC = () => {
                }
 
                return (
-                 <Sprite
+                 <pixiSprite
                    key={clip.id}
                    texture={texture}
                    anchor={0.5}
@@ -101,9 +98,8 @@ export const PixiPreview: React.FC = () => {
                  />
                );
             })}
-        </Container>
-      </Stage>
+        </pixiContainer>
+      </Application>
     </div>
   );
-
 };

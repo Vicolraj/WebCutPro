@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../../libs/db';
 
-export const useWaveform = (mediaId: string, points: number = 100) => {
+export const useWaveform = (mediaId: string | undefined, points: number = 100) => {
   const [waveform, setWaveform] = useState<Float32Array | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
