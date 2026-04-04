@@ -1,9 +1,10 @@
 import React, { useCallback, useRef } from 'react';
-import { useUIStore } from '../../core/store/useStore';
+import { useUIStore, useProjectStore, usePlaybackStore } from '../../core/store/useStore';
+import { DndContext, type DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { db } from '../../libs/db';
 
 
 interface EditorLayoutProps {
-
   topbar: React.ReactNode;
   leftPanel: React.ReactNode;
   preview: React.ReactNode;
@@ -59,60 +60,98 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
     document.body.style.cursor = 'default';
   }, [handleMouseMove]);
 
+  const { addClip } = useProjectStore();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const assetId = active.id as string;
+    const overId = over.id as string;
+
+    try {
+      const asset = await db.assets.get(assetId);
+      if (asset) {
+        let clipType: 'video' | 'audio' | 'image' | 'text' = 'video';
+        if (asset.type.includes('video')) clipType = 'video';
+        else if (asset.type.includes('audio')) clipType = 'audio';
+        else if (asset.type.includes('image')) clipType = 'image';
+
+        addClip({
+          id: Math.random().toString(36).substring(2, 9),
+          trackId: overId.startsWith('track-') ? overId.replace('track-', '') : overId,
+          startTime: usePlaybackStore.getState().playhead,
+          duration: clipType === 'image' ? 5 : (asset.duration || 5),
+          sourceStart: 0,
+          name: asset.name,
+          type: clipType,
+          mediaId: asset.id,
+          blob: URL.createObjectURL(asset.blob),
+          thumbnail: asset.thumbnail
+        });
+      }
+    } catch (e) {
+      console.error('Drag drop failed', e);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-bg text-text overflow-hidden font-sans">
-      {/* Topbar */}
-      <header className="flex-shrink-0 z-50">
-        {topbar}
-      </header>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-text overflow-hidden font-sans">
+        {/* Topbar */}
+        <header className="flex-shrink-0 z-50">
+          {topbar}
+        </header>
 
-      {/* Main Workspace */}
-      <main className="flex flex-1 overflow-hidden relative">
-        {/* Left Panel */}
-        <aside 
-          className="bg-panel border-r border-border relative flex flex-col overflow-hidden"
-          style={{ width: leftPanelWidth }}
-        >
-          {leftPanel}
-          <div 
-            onMouseDown={handleMouseDown('leftWidth')}
-            className="absolute right-0 top-0 bottom-0 w-1 hover:bg-accent cursor-col-resize z-10 transition-colors"
-          />
-        </aside>
+        {/* Main Workspace */}
+        <main className="flex flex-1 overflow-hidden relative">
+          {/* Left Panel */}
+          <aside 
+            className="bg-[#12121A] border-r border-white/5 relative flex flex-col overflow-hidden shadow-2xl"
+            style={{ width: leftPanelWidth }}
+          >
+            {leftPanel}
+            <div 
+              onMouseDown={handleMouseDown('leftWidth')}
+              className="absolute right-0 top-0 bottom-0 w-1 hover:bg-accent/50 cursor-col-resize z-10 transition-colors"
+            />
+          </aside>
 
-        {/* Preview & Right Panels */}
-        <div className="flex flex-1 flex-col overflow-hidden relative">
-          <div className="flex flex-1 overflow-hidden relative">
-            <section className="flex-1 bg-bg overflow-hidden relative flex flex-col">
-              {preview}
-            </section>
+          {/* Preview & Right Panels */}
+          <div className="flex flex-1 flex-col overflow-hidden relative">
+            <div className="flex flex-1 overflow-hidden relative">
+              <section className="flex-1 bg-[#050508] overflow-hidden relative flex flex-col">
+                {preview}
+              </section>
 
-            {/* Right Panel */}
-            <aside 
-              className="bg-panel border-l border-border relative flex flex-col overflow-hidden"
-              style={{ width: rightPanelWidth }}
+              {/* Right Panel */}
+              <aside 
+                className="bg-[#12121A] border-l border-white/5 relative flex flex-col overflow-hidden"
+                style={{ width: rightPanelWidth }}
+              >
+                <div 
+                  onMouseDown={handleMouseDown('rightWidth')}
+                  className="absolute left-0 top-0 bottom-0 w-1 hover:bg-accent/50 cursor-col-resize z-10 transition-colors"
+                />
+                {rightPanel}
+              </aside>
+            </div>
+
+            {/* Timeline Panel */}
+            <section 
+              className="bg-[#0F0F16] border-t border-white/5 relative flex flex-col overflow-hidden shadow-[0_-10px_30px_rgba(0,0,0,0.3)]"
+              style={{ height: timelineHeight }}
             >
               <div 
-                onMouseDown={handleMouseDown('rightWidth')}
-                className="absolute left-0 top-0 bottom-0 w-1 hover:bg-accent cursor-col-resize z-10 transition-colors"
+                onMouseDown={handleMouseDown('timelineHeight')}
+                className="absolute top-0 left-0 right-0 h-1 hover:bg-accent/50 cursor-row-resize z-10 transition-colors"
               />
-              {rightPanel}
-            </aside>
+              {timeline}
+            </section>
           </div>
-
-          {/* Timeline Panel */}
-          <section 
-            className="bg-panel border-t border-border relative flex flex-col overflow-hidden"
-            style={{ height: timelineHeight }}
-          >
-            <div 
-              onMouseDown={handleMouseDown('timelineHeight')}
-              className="absolute top-0 left-0 right-0 h-1 hover:bg-accent cursor-row-resize z-10 transition-colors"
-            />
-            {timeline}
-          </section>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </DndContext>
   );
 };

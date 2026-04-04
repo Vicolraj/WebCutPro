@@ -9,7 +9,7 @@ export interface TimelineClip {
   duration: number;
   sourceStart: number;
   name: string;
-  type: 'video' | 'audio' | 'text';
+  type: 'video' | 'audio' | 'text' | 'image';
   mediaId?: string;  // Link to IndexedDB MediaAsset
   blob: string;     // Active session Blob URL
   isSelected?: boolean;
@@ -63,6 +63,7 @@ export interface ProjectStore {
   addClip: (clip: TimelineClip) => void;
   updateClip: (clipId: string, changes: Partial<TimelineClip>) => void;
   removeClip: (clipId: string) => void;
+  deleteAsset: (assetId: string) => void;
   selectClip: (clipId: string | null) => void;
   splitClip: (clipId: string, time: number) => void;
   rippleRemoveClip: (clipId: string) => void;
@@ -136,6 +137,12 @@ export const useProjectStore = create<ProjectStore>()(
       removeClip: (clipId: string) => 
         set((state: ProjectStore) => {
           state.clips = state.clips.filter(c => c.id !== clipId);
+        }),
+
+      deleteAsset: (assetId: string) =>
+        set((state: ProjectStore) => {
+          // Remove all clips associated with this asset
+          state.clips = state.clips.filter(c => c.mediaId !== assetId);
         }),
 
       selectClip: (clipId: string | null) => 

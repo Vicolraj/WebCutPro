@@ -17,6 +17,7 @@ const HEADER_WIDTH = 180;
 import { TrackHeader } from './components/TrackHeader';
 
 import { TimelineClip } from './components/TimelineClip';
+import { DroppableTrack } from './components/DroppableTrack';
 
 export const Timeline: React.FC = () => {
   const { zoom, setZoom } = useUIStore();
@@ -168,12 +169,12 @@ export const Timeline: React.FC = () => {
             {tracks.map((track) => (
               <div key={track.id} className="flex border-b border-border/10 overflow-hidden">
                 <TrackHeader track={track} />
-                <div className="flex-1 timeline-track h-[52px] relative">
+                <DroppableTrack id={track.id}>
                    {/* Clips for this track */}
                    {clips.filter(c => c.trackId === track.id).map(clip => (
                       <TimelineClip key={clip.id} clip={clip} />
                    ))}
-                </div>
+                </DroppableTrack>
               </div>
             ))}
           </div>

@@ -63,6 +63,16 @@ export const PixiPreview: React.FC = () => {
                const texture = textures.get(clip.id);
                if (!texture) return null;
 
+               // Sync Video Playhead
+               if (texture.source.resource instanceof HTMLVideoElement) {
+                  const video = texture.source.resource;
+                  const targetTime = playhead - clip.startTime;
+                  // Only seek if the difference is significant to avoid stuttering
+                  if (Math.abs(video.currentTime - targetTime) > 0.1) {
+                     video.currentTime = targetTime;
+                  }
+               }
+
                // Calculate Alpha for Transitions
                let alpha = 1;
                const transition = transitions.find(t => t.clipAId === clip.id || t.clipBId === clip.id);

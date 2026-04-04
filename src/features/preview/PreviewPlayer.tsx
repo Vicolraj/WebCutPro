@@ -8,13 +8,13 @@ import {
   Maximize2, 
   Volume2, 
   VolumeX, 
-  Monitor,
-  MoreVertical,
   ChevronDown
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { PixiPreview } from './PixiPreview';
 import { TextOverlay } from './components/TextOverlay';
+import { audioEngine } from '../audio/AudioEngine';
+import { useDraggable } from '@dnd-kit/core';
 
 export const PreviewPlayer: React.FC = () => {
   const { playhead, setPlayhead, isPlaying, setIsPlaying, duration } = usePlaybackStore();
@@ -23,7 +23,12 @@ export const PreviewPlayer: React.FC = () => {
   const [volume, setVolume] = useState(1);
   const [isMuted] = useState(false);
 
-  const togglePlay = () => setIsPlaying(!isPlaying);
+  const togglePlay = () => {
+    if (!isPlaying) {
+      audioEngine.init();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

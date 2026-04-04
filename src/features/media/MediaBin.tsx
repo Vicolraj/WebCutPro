@@ -1,40 +1,119 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useMediaImport } from './hooks/useMediaImport';
+import { db, type MediaAsset } from '../../libs/db';
 import { 
-  Upload, 
-  Search, 
-  Grid, 
-  List, 
-  Film
+  FileVideo, 
+  FileAudio, 
+  FileImage, 
+  FileText, 
+  Plus, 
+  Upload,
+  Trash2,
+  Search
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { useUIStore, useProjectStore, usePlaybackStore } from '../../core/store/useStore';
-import { db, type MediaAsset } from '../../libs/db';
-import { useMediaImport } from './hooks/useMediaImport';
-import { cn } from '../../utils/utils';
+import { usePlaybackStore, useProjectStore } from '../../core/store/useStore';
+import { ContextMenu } from '../../components/ui/ContextMenu';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+interface DraggableAssetProps {
+  asset: MediaAsset;
+  onContextMenu: (e: React.MouseEvent) => void;
+  onClick: () => void;
+}
+
+const DraggableAsset: React.FC<DraggableAssetProps> = ({ asset, onContextMenu, onClick }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: asset.id,
+    data: asset
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "group relative bg-[#16161E] border border-white/5 rounded-px8 overflow-hidden hover:border-accent/30 transition-all cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 border-accent z-50 pointer-events-none"
+      )}
+      onContextMenu={onContextMenu}
+      onClick={onClick}
+    >
+      {/* Thumbnail / Icon Container */}
+      <div className="h-24 bg-black/40 flex items-center justify-center relative overflow-hidden group-hover:bg-black/20 transition-colors">
+        {asset.thumbnail ? (
+          <img src={asset.thumbnail} alt={asset.name} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+        ) : (
+          <div className="opacity-20 text-accent">
+            {asset.type.includes('video') ? <FileVideo size={32} /> : 
+             asset.type.includes('audio') ? <FileAudio size={32} /> : 
+             asset.type.includes('image') ? <FileImage size={32} /> : 
+             <FileText size={32} />}
+          </div>
+        )}
+        
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+          <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto rounded-full bg-white/10 hover:bg-accent/40 text-white pointer-events-auto">
+            <Plus size={12} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Metadata */}
+      <div className="p-2 border-t border-white/5 bg-[#1C1C24]/50">
+        <div className="text-[10px] font-bold text-white/90 truncate leading-tight mb-1">{asset.name}</div>
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] text-textDim uppercase tracking-widest font-mono">
+            {asset.type.split('/')[1] || 'FILE'}
+          </span>
+          <span className="text-[9px] text-textDim">
+            {(asset.size / 1024 / 1024).toFixed(1)} MB
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const MediaBin: React.FC = () => {
-  const { activeTab, setActiveTab } = useUIStore();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { importFiles, isImporting, progress } = useMediaImport();
+  const { addClip, deleteAsset } = useProjectStore();
   const [assets, setAssets] = useState<MediaAsset[]>([]);
-  const { addClip } = useProjectStore();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, assetId: string } | null>(null);
+
+  const fetchAssets = async () => {
+    const allAssets = await db.assets.toArray();
+    setAssets(allAssets);
+  };
 
   useEffect(() => {
-    const loadAssets = async () => {
-      const allAssets = await db.assets.toArray();
-      setAssets(allAssets);
-    };
-    loadAssets();
-    
-    // Refresh when importing finishes
-    if (!isImporting) loadAssets();
+    fetchAssets();
   }, [isImporting]);
 
-  const handleFileUpload = (files: FileList | null) => {
-    importFiles(files);
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    importFiles(e.target.files);
+  };
+
+  const handleDeleteAsset = async (id: string) => {
+    await db.assets.delete(id);
+    deleteAsset(id);
+    fetchAssets();
   };
 
   const filteredAssets = assets.filter(a => 
@@ -42,200 +121,118 @@ export const MediaBin: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-panel">
-      {/* Header Tabs */}
-      <div className="flex items-center gap-1 border-b border-border px-2">
-        {['media', 'effects', 'text', 'audio', 'stickers'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`
-              px-3 py-3 text-[11px] font-bold uppercase tracking-wider transition-all
-              ${activeTab === tab ? 'text-accent border-b-2 border-accent' : 'text-textSec hover:text-text'}
-            `}
-          >
-            {tab}
-          </button>
-        ))}
+    <div className="flex flex-col h-full bg-panel select-none">
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-textDim flex items-center gap-2">
+          Media Assets
+          <span className="bg-white/5 px-1.5 py-0.5 rounded-px4 text-[9px] text-accent">
+            {assets.length}
+          </span>
+        </h2>
+        <div className="flex items-center gap-2">
+           <label className="cursor-pointer">
+              <input type="file" multiple className="hidden" onChange={handleImport} />
+              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full bg-white/5 hover:bg-accent/20 hover:text-accent border border-white/5">
+                <Upload size={14} />
+              </Button>
+           </label>
+        </div>
       </div>
 
-      {activeTab === 'media' && (
-        <>
-          {/* Toolbar */}
-          <div className="flex items-center justify-between p-2 gap-2">
-            <div className="flex flex-1 items-center bg-surface border border-border rounded-px6 px-2 py-1">
-              <Search size={14} className="text-textDim mr-2" />
-              <input
-                type="text"
-                placeholder="Search assets..."
-                className="bg-transparent border-none outline-none text-xs w-full text-text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+      {/* Search Bar */}
+      <div className="px-3 pt-3">
+        <div className="relative group">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-textDim group-focus-within:text-accent transition-colors" />
+          <input 
+            type="text" 
+            placeholder="Search project..."
+            className="w-full bg-black/40 border border-white/5 rounded-px6 py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none focus:border-accent/40 focus:bg-black/60 transition-all placeholder:text-textDim/50"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+        {isImporting && (
+          <div className="mb-4 bg-accent/5 border border-accent/20 rounded-px8 p-3 animate-pulse">
+            <div className="flex items-center justify-between mb-2">
+               <span className="text-[10px] font-bold text-accent uppercase tracking-thicker">Importing...</span>
+               <span className="text-[10px] text-accent/60 italic">{Math.round(progress)}%</span>
+            </div>
+            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+               <div 
+                  className="h-full bg-accent transition-all duration-300 shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" 
+                  style={{ width: `${progress}%` }} 
+               />
+            </div>
+          </div>
+        )}
+
+        {filteredAssets.length === 0 && !isImporting ? (
+          <div className="h-40 flex flex-col items-center justify-center text-center opacity-30">
+            <div className="p-4 rounded-full bg-white/5 mb-3">
+              <Upload size={24} />
+            </div>
+            <p className="text-[11px] font-medium max-w-[140px]">Drag files here or use the upload button</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {filteredAssets.map((asset) => (
+              <DraggableAsset 
+                key={asset.id} 
+                asset={asset}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY, assetId: asset.id });
+                }}
+                onClick={() => {
+                  const blobUrl = URL.createObjectURL(asset.blob);
+                  let clipType: 'video' | 'audio' | 'image' | 'text' = 'video';
+                  
+                  if (asset.type.includes('video')) {
+                    clipType = 'video';
+                  } else if (asset.type.includes('audio')) {
+                    clipType = 'audio';
+                  } else if (asset.type.includes('image')) {
+                    clipType = 'image';
+                  }
+
+                  const trackId = (clipType === 'video' || clipType === 'image') ? 'v1' : 'a1';
+                  
+                  addClip({
+                    id: Math.random().toString(36).substring(2, 9),
+                    trackId,
+                    startTime: usePlaybackStore.getState().playhead,
+                    duration: clipType === 'image' ? 5 : (asset.duration || 5),
+                    sourceStart: 0,
+                    name: asset.name,
+                    type: clipType,
+                    mediaId: asset.id,
+                    blob: blobUrl,
+                    thumbnail: asset.thumbnail
+                  });
+                }}
               />
-            </div>
-            <div className="flex items-center gap-1">
-               <Button variant="ghost" size="icon" onClick={() => setViewMode('grid')} active={viewMode === 'grid'}>
-                  <Grid size={14} />
-               </Button>
-               <Button variant="ghost" size="icon" onClick={() => setViewMode('list')} active={viewMode === 'list'}>
-                  <List size={14} />
-               </Button>
-            </div>
+            ))}
           </div>
+        )}
+      </div>
 
-          {/* Upload Zone */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-            onDragLeave={() => setIsDraggingOver(false)}
-            onDrop={(e) => { e.preventDefault(); setIsDraggingOver(false); handleFileUpload(e.dataTransfer.files); }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`
-              mx-3 mb-4 p-6 border-2 border-dashed rounded-px10 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all
-              ${isDraggingOver ? 'border-accent bg-accent/5' : 'border-border hover:border-accent hover:bg-white/5'}
-            `}
-          >
-            <Upload size={24} className={isDraggingOver ? 'text-accent' : 'text-textDim'} />
-            <div className="text-center">
-              <p className="text-xs font-semibold text-text">Import Media</p>
-              <p className="text-[10px] text-textDim italic">Drop files or click</p>
-            </div>
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              multiple 
-              className="hidden" 
-              onChange={(e) => handleFileUpload(e.target.files)} 
-            />
-          </div>
-
-          {/* Asset List */}
-          <div className="flex-1 overflow-y-auto px-3 pb-4">
-            {isImporting && (
-               <div className="mb-4 bg-surface rounded-px6 p-3 border border-accent/20">
-                  <div className="flex justify-between items-center mb-2">
-                     <span className="text-[10px] uppercase font-bold text-accent">Importing...</span>
-                     <span className="text-[10px] font-mono">{Math.round(progress)}%</span>
-                  </div>
-                  <div className="w-full h-1 bg-border rounded-full overflow-hidden">
-                     <div className="h-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
-                  </div>
-               </div>
-            )}
-            
-            {assets.length === 0 && !isImporting ? (
-               <div className="flex flex-col items-center justify-center gap-4 py-20 text-textDim opacity-50">
-                  <Film size={48} strokeWidth={1} />
-                  <p className="text-xs font-medium">Empty Media Bin</p>
-               </div>
-            ) : (
-                <div 
-                  className={cn(
-                    "grid gap-3",
-                    viewMode === 'grid' ? "grid-cols-2" : "flex flex-col"
-                  )}
-                >
-                   {filteredAssets.map(asset => (
-                     <div
-                        key={asset.id}
-                        onClick={() => {
-                          const blobUrl = URL.createObjectURL(asset.blob);
-                          const clipType = asset.type.includes('video') ? 'video' : 'audio';
-                          
-                          addClip({
-                            id: Math.random().toString(36).substring(2, 9),
-                            trackId: clipType === 'video' ? 'v1' : 'a1',
-                            startTime: usePlaybackStore.getState().playhead,
-                            duration: asset.duration || 5,
-                            sourceStart: 0,
-                            name: asset.name,
-                            type: clipType,
-                            mediaId: asset.id,
-                            blob: blobUrl,
-                          });
-                        }}
-                        className={cn(
-                          "group relative bg-surface border border-border rounded-xl overflow-hidden cursor-pointer hover:border-accent transition-all hover:scale-[1.02] active:scale-98 shadow-sm",
-                          viewMode === 'list' && "flex items-center p-2"
-                        )}
-                      >
-                        <div className={cn(
-                          "aspect-video bg-black flex items-center justify-center text-accent/30 overflow-hidden",
-                          viewMode === 'list' && "w-12 h-12 aspect-square rounded-lg flex-shrink-0"
-                        )}>
-                          {asset.thumbnail ? (
-                            <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            asset.type.includes('video') ? <Film size={24} /> : <div className="text-xl font-bold italic">A</div>
-                          )}
-                        </div>
-                        <div className="p-2 min-w-0">
-                          <p className="text-[11px] font-bold truncate mb-1 text-text">{asset.name}</p>
-                          <div className="flex items-center gap-2 text-[9px] text-textDim uppercase font-bold tracking-tighter">
-                            <span>{(asset.size / (1024 * 1024)).toFixed(1)} MB</span>
-                            {asset.duration && (
-                              <>
-                                <span>•</span>
-                                <span>{Math.floor(asset.duration)}s</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                   ))}
-                </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {activeTab === 'text' && (
-         <div className="flex-1 p-3 flex flex-col gap-4">
-            <h3 className="text-[10px] uppercase font-bold tracking-widest text-accent">Titles & Text</h3>
-            <div className="grid grid-cols-2 gap-2">
-               <button 
-                  onClick={() => {
-                     const id = Math.random().toString(36).substring(2, 9);
-                     const state = useProjectStore.getState();
-                     const track = state.tracks.find(t => t.type === 'video');
-
-                     if (!track) return;
-
-                     addClip({
-                        id,
-                        trackId: track.id,
-                        name: 'New Title',
-                        startTime: usePlaybackStore.getState().playhead,
-                        duration: 5,
-                        sourceStart: 0,
-                        type: 'text',
-                        blob: '', // Text clips don't need a blob
-                        isSelected: true,
-                        content: 'Enter Text',
-                        style: {
-                          fontSize: 48,
-                          fontFamily: 'Inter',
-                          color: '#ffffff',
-                          x: 960,
-                          y: 540
-                        }
-                     });
-                  }}
-                  className="flex flex-col items-center justify-center aspect-square bg-surface border border-border rounded-px8 hover:border-accent hover:bg-accent/5 transition-all group"
-               >
-                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                     <span className="text-accent font-black text-xl italic leading-none">T</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-tighter text-textDim group-hover:text-text">Add Title</span>
-               </button>
-            </div>
-         </div>
-      )}
-
-      {['effects', 'audio', 'stickers'].includes(activeTab) && (
-         <div className="flex-1 flex flex-col items-center justify-center text-textDim gap-4 opacity-50">
-            <p className="text-xs font-semibold uppercase tracking-widest">{activeTab} Coming Soon</p>
-         </div>
-      )}
+      <ContextMenu 
+        isOpen={!!contextMenu}
+        x={contextMenu?.x || 0}
+        y={contextMenu?.y || 0}
+        onClose={() => setContextMenu(null)}
+        options={[
+          { 
+            label: 'Delete Asset', 
+            icon: <Trash2 size={14} />, 
+            variant: 'danger',
+            onClick: () => contextMenu && handleDeleteAsset(contextMenu.assetId)
+          }
+        ]}
+      />
     </div>
   );
 };
